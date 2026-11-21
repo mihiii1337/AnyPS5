@@ -329,7 +329,7 @@ def is_disabled(value):
     return value is not None and value.upper() in ("1", "ON", "YES", "TRUE", "Y")
 
 
-def run_scripts(root, files, invocations=None):
+def run_scripts(root, files, invocations=None, *, manifest_selections=None):
     run = set()
     registrations = load_registrations(root)
     for name in files:
@@ -372,8 +372,8 @@ def run_scripts(root, files, invocations=None):
                     connected = any(not any(left[0] == right[0] and left[1] != right[1]
                                             for left, right in zip(reader, scopes)) for reader in metadata_readers)
                     if arguments == ["${CMAKE_CURRENT_SOURCE_DIR}"] and connected and all(scope[0] for scope in metadata_scopes):
-                        tests.extend([record["name"], ["tools/tests/" + record["script"]], ("", False), scopes[:]]
-                                     for record in registrations)
+                        tests.extend([record["name"], ["tools/tests/" + record["script"]], ("", False),
+                                      scopes[:], record["arguments"]] for record in registrations)
                 elif command == "add_test" and arguments:
                     if arguments and arguments[0] == "NAME":
                         if "COMMAND" not in arguments[2:]:
@@ -386,7 +386,7 @@ def run_scripts(root, files, invocations=None):
                     else:
                         test_name = arguments[0]
                         arguments = arguments[1:]
-                    tests.append([test_name, arguments, ("", False), scopes[:]])
+                    tests.append([test_name, arguments, ("", False), scopes[:], None])
                 elif command in {"set_tests_properties", "set_property"}:
                     for names, mode, value in disabled_properties(command, arguments):
                         for test in tests:
@@ -405,10 +405,12 @@ def run_scripts(root, files, invocations=None):
                                     test[2] = updated
                                 elif updated != test[2]:
                                     test[2] = None, test[2][1] and updated[1]
-            for _, arguments, value, _ in tests:
+            for _, arguments, value, _, manifest_arguments in tests:
                 if not value[1]:
                     run.update(argument.rpartition("}")[2].lstrip("/") for argument in arguments)
-                    if invocations is not None:
+                    if manifest_arguments is not None and manifest_selections is not None:
+                        manifest_selections.setdefault(arguments[0], []).append(manifest_arguments)
+                    elif invocations is not None:
                         invocations.append([VARIABLE.sub(lambda match: variables.get(match.group(1), match.group()), argument)
                                             .rpartition("}")[2].lstrip("/") for argument in arguments])
         elif name.startswith(".github/workflows/") and name.endswith((".yml", ".yaml")):
@@ -449,8 +451,8 @@ def unittest_classes(path):
 def unselected_classes(root):
     files = listed(root)
     invocations = []
-    run_scripts(root, files, invocations)
     selections = {}
+    run_scripts(root, files, invocations, manifest_selections=selections)
     for arguments in invocations:
         for index, argument in enumerate(arguments):
             if SCRIPT.fullmatch(argument):

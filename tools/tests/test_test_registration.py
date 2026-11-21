@@ -1009,6 +1009,20 @@ class ScriptClassSelectionTests(unittest.TestCase):
                               '    add_test(NAME a_${test_class} COMMAND python "${a_source}" ${test_class})\nendforeach()\n',
             "tools/tests/test_a.py": self.CASES}), {})
 
+    def test_manifest_arguments_select_classes_only_in_the_declared_script(self):
+        records = [
+            {"name": "classes", "script": "test_a.py", "arguments": ["ATests"], "timeout": 10},
+            {"name": "reader", "script": "test_reader.py", "arguments": ["test_a.py"], "timeout": 10},
+        ]
+        self.assertEqual(self.unselected({
+            "CMakeLists.txt": 'include(cmake/ToolTestRegistration.cmake)\n'
+                              'register_python_tool_tests("${CMAKE_CURRENT_SOURCE_DIR}")\n',
+            "cmake/ToolTestRegistration.cmake": "",
+            "tools/tests/registrations/groups.json": json.dumps({"version": 1, "tests": records}),
+            "tools/tests/test_a.py": self.CASES,
+            "tools/tests/test_reader.py": "",
+        }), {"tools/tests/test_a.py": ["BTests"]})
+
     def test_a_method_selector_does_not_run_its_whole_class(self):
         self.assertEqual(self.unselected({
             "CMakeLists.txt": f"add_test(NAME a COMMAND python {self.SCRIPT} ATests.test_a BTests)\n",
