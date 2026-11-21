@@ -101,9 +101,16 @@ int main() {
         Check(*device, QueryCube, Descriptor(TypeCube, 6u), "cube", {Size, Size, 6u, 1u}, {Size, Size, 0u, 1u});
         Check(*device, Query3D, Descriptor(Type3D, 4u), "3D", {Size, Size, 4u, 1u}, {Size, Size, 4u, 1u});
         Check(*device, Query2DArray, Descriptor(Type2DArray, 3u), "2D array", {Size, Size, 3u, 1u}, {Size, Size, 0u, 1u});
+        const auto colorSampleCounts = device->graphicsContext().limits.framebufferColorSampleCounts;
         for (std::uint32_t log2Fragments = 1; log2Fragments <= 3; ++log2Fragments) {
+            const auto samples = 1u << log2Fragments;
+            if ((colorSampleCounts & samples) == 0u) {
+                std::printf("2D MSAA %ux unavailable (unsupported color sample count)\n", samples);
+                continue;
+            }
             const auto msaa = Descriptor(Type2DMsaa, 1u, log2Fragments);
             Check(*device, Query2DMsaa, msaa, "2D MSAA", {Size, Size, 0u, 1u}, {Size, Size, 0u, 1u});
+            std::printf("2D MSAA %ux queries passed\n", samples);
         }
         std::puts("image resinfo dimension tests passed");
         return 0;
