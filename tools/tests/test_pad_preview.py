@@ -35,10 +35,12 @@ class FeatureTests(unittest.TestCase):
 
     def test_invalid_and_exhausted_inputs_leave_the_destination_unchanged(self):
         path = self.root / "command"
-        for extra in (["--hold-ms", "0"], ["--right-stick", "256", "0"], ["--touch", "0", "0", "128", "0"]):
-            result = self.cli("preview_pad_input.py", path, "cross", *extra)
-            self.assertEqual((result.returncode, result.stdout), (2, ""))
-            self.assertFalse(path.exists())
+        for extra in (["--hold-ms", "0"], ["--hold-ms", "5001"], ["--right-stick", "256", "0"],
+                      ["--touch", "1920", "0", "0", "0"], ["--touch", "0", "0", "128", "0"], ["--touch", "0", "0", "0", "2"]):
+            with self.subTest(args=extra):
+                result = self.cli("preview_pad_input.py", path, "cross", *extra)
+                self.assertEqual((result.returncode, result.stdout), (2, ""))
+                self.assertFalse(path.exists())
         path.write_text("18446744073709551615 16384 300\n")
         result = self.cli("preview_pad_input.py", path, "cross")
         self.assertEqual((result.returncode, result.stdout), (2, ""))
