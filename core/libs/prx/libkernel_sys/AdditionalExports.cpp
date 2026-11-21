@@ -99,8 +99,12 @@ int APS5_VABI __sys_get_proc_type_info_nid_postfix() {
     NotImplemented_nid_no_patch(__func__);
 }
 
-std::uint64_t APS5_VABI __sys_is_development_mode_nid_postfix() {
+std::uint64_t GuestIsDevelopmentMode_nid_no_patch() {
     return 0;
+}
+
+std::uint64_t APS5_VABI __sys_is_development_mode_nid_postfix() {
+    return GuestIsDevelopmentMode_nid_no_patch();
 }
 
 int APS5_VABI __sys_kqueueex_nid_postfix() {
@@ -1832,7 +1836,7 @@ int APS5_VABI sceKernelIccSetWlanBtManuTestMode() {
 }
 
 int APS5_VABI sceKernelIsAuthenticTrinity() {
-    NotImplemented_nid_no_patch(__func__);
+    return 0;
 }
 
 int APS5_VABI sceKernelIsCloudDevkit() {
@@ -1840,7 +1844,7 @@ int APS5_VABI sceKernelIsCloudDevkit() {
 }
 
 int APS5_VABI sceKernelIsCloudkit() {
-    NotImplemented_nid_no_patch(__func__);
+    return 0;
 }
 
 int APS5_VABI sceKernelIsCronos() {

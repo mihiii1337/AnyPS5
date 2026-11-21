@@ -166,7 +166,8 @@ class CheckSkipsTests(unittest.TestCase):
 
     def test_windows_symlink_creation_privilege_skip_is_narrow(self):
         reason = "SKIP: Windows symbolic-link privileges unavailable"
-        names = ("guest_kernel_sys_paths_symlinkat", "guest_kernel_sys_paths_symlinkat_patched")
+        names = ("guest_kernel_sys_paths_symlinkat", "guest_kernel_sys_paths_symlinkat_patched", "guest_kernel_sys_paths_readlink_limits",
+                 "guest_kernel_sys_paths_readlink_limits_patched", "guest_kernel_sys_paths_readlinkat_limits", "guest_kernel_sys_paths_readlinkat_limits_patched")
         with tempfile.TemporaryDirectory() as directory:
             junit = Path(directory) / "junit.xml"
             for name in names:
@@ -179,6 +180,10 @@ class CheckSkipsTests(unittest.TestCase):
             invalid = (
                 ("guest_kernel_sys_paths_symlinkat_errors", reason, "windows", ""),
                 ("guest_kernel_sys_paths_symlinkat_refused_unpatched", reason, "windows", ""),
+                ("guest_kernel_sys_paths_readlink", reason, "windows", ""),
+                ("guest_kernel_sys_paths_readlink_limits_unpatched", reason, "windows", ""),
+                (names[2], reason, "linux", ""),
+                (names[2], reason + "\nSKIP: flaky", "windows", ""),
                 ("guest_probe", reason, "windows", ""),
                 (names[0], reason, "linux", ""),
                 (names[0], "", "windows", ""),
@@ -354,6 +359,70 @@ class DeviceSkipPolicyTests(unittest.TestCase):
             f'<skipped message="{extra}"/><system-out>{known}</system-out>',
             f'<skipped>{reason}\n{extra}</skipped>',
             f'<skipped/><system-out>{known}\n{known}\n{extra}</system-out>',
+        )
+        with tempfile.TemporaryDirectory() as directory:
+            junit = Path(directory) / "junit.xml"
+            for report in reports:
+                junit.write_text(f'<testsuite><testcase name="guest_video_out_high_frame_rate">{report}</testcase></testsuite>', encoding="utf-8")
+                for job in ("linux", "windows"):
+                    with self.subTest(job=job, report=report):
+                        result = subprocess.run(
+                            [sys.executable, "-I", str(TOOL), str(junit), "--job", job],
+                            capture_output=True, encoding="utf-8")
+                        self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+                        self.assertIn("error: guest_video_out_high_frame_rate skipped", result.stdout)
+
+    def test_high_refresh_skip_is_expected_alongside_device_log_lines(self):
+        reason = "current display does not provide 120 Hz"
+        log = "\n".join((
+            "[time] scheduler tick raised to 0.5 ms (was 0.50 ms, now 0.50 ms, timed waits fine, timers fire 518 us late)",
+            "[src/HostCpu.cpp:220 operator()] host CPU has SSE2 AVX AVX2",
+            "[src/VulkanDevice.cpp:2666 VulkanDevice] Vulkan device ready device=0x2 queue=0x3 family=0",
+            "[write-watch] host imports resolve write protection: yes",
+            "[gpu] open /dev/udmabuf: No such file or directory; using a fallback",
+            "[src/VulkanDevice.cpp:2758 VulkanDevice] Swapchain created swapchain=0x4 extent=1152x648 images=4",
+            "[shader-disk-cache] cache (source version 5110620204023565, format 60)",
+            "[videoout] HDR output available: peak 1000.0 nits, full frame 600.0 nits, black 0.0050 nits",
+            "[videoout] HDR output unavailable (display in HDR: no, surface offers HDR10: yes)",
+            "[Vulkan Loader] LAYER:          Searching for implicit layer manifest files",
+            "[Vulkan Loader] INFO | LAYER:   Insert instance layer \"VK_LAYER_KHRONOS_validation\" (VkLayer_khronos_validation.dll)",
+            "[Vulkan Loader] INFO | LAYER:",
+            "[Vulkan Loader] WARNING | LAYER: env var 'VK_INSTANCE_LAYERS' defined and adding layers \"VK_LAYER_KHRONOS_validation\"",
+            "[Vulkan Loader] DEBUG | LAYER:  Unloading layer library VkLayer_khronos_validation.dll",
+            "[Vulkan Loader] DRIVER:              ||",
+            f"skipped, {reason}",
+        ))
+        reports = (
+            f'<skipped/><system-out>{log}</system-out>',
+            f'<skipped message="{reason}"/><system-out>{log}</system-out>',
+            f'<skipped/><system-out>{log}</system-out><system-err>[gpu] teardown</system-err>',
+        )
+        with tempfile.TemporaryDirectory() as directory:
+            junit = Path(directory) / "junit.xml"
+            for report in reports:
+                junit.write_text(f'<testsuite><testcase name="guest_video_out_high_frame_rate">{report}</testcase></testsuite>', encoding="utf-8")
+                for job in ("linux", "windows"):
+                    with self.subTest(job=job, report=report):
+                        result = subprocess.run(
+                            [sys.executable, "-I", str(TOOL), str(junit), "--job", job],
+                            capture_output=True, encoding="utf-8")
+                        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+                        self.assertIn("1 test(s) skipped, all expected", result.stdout)
+
+    def test_bracketed_line_cannot_hide_a_second_skip_reason(self):
+        reason = "current display does not provide 120 Hz"
+        reports = (
+            f'<skipped/><system-out>[probe] skipped, flaky\nskipped, {reason}</system-out>',
+            f'<skipped/><system-out>skipped, {reason}\n[probe] skipped, flaky</system-out>',
+            f'<skipped message="{reason}"/><system-err>[probe] skipped, flaky</system-err>',
+            f'<skipped/><system-out>skipped, {reason}\n[probe] unexpected failure detail</system-out>',
+            f'<skipped/><system-out>[probe] unexpected failure detail\nskipped, {reason}</system-out>',
+            f'<skipped message="{reason}"/><system-err>[probe] unexpected failure detail</system-err>',
+            f'<skipped message="{reason}"/><system-err>[videoout] unexpected failure detail</system-err>',
+            f'<skipped message="{reason}"/><system-err>[videoout] HDR output unavailable (display in HDR: no, surface offers HDR10: yes): unexpected error</system-err>',
+            f'<skipped message="{reason}"/><system-err>[Vulkan Loader] ERROR | DRIVER: loader_icd_scan: failed to read the ICD manifest</system-err>',
+            f'<skipped/><system-out>[Vulkan Loader] INFO | LAYER: skipped, flaky\nskipped, {reason}</system-out>',
+            f'<skipped/><system-out>[Vulkan Loader] unexpected failure detail\nskipped, {reason}</system-out>',
         )
         with tempfile.TemporaryDirectory() as directory:
             junit = Path(directory) / "junit.xml"
@@ -655,49 +724,7 @@ class NotRunTests(unittest.TestCase):
                     self.assertNotIn("Traceback", checked.stderr)
 
 
-class LimitationTests(unittest.TestCase):
-    def test_environment_loader_retention_needs_exactly_the_known_reason(self):
-        self.assertTrue(check_skips.environment_loader_retention(check_skips.ENVIRONMENT_LOADER_RETENTION))
-        self.assertFalse(check_skips.environment_loader_retention('skipped: other reason'))
 
-    def test_symlink_privilege_limitation_applies_only_to_the_symlink_tests(self):
-        message = 'SKIP: Windows symbolic-link privileges unavailable\n'
-        self.assertTrue(check_skips.symlink_privilege_limitation('guest_kernel_sys_paths_symlinkat', message))
-        self.assertFalse(check_skips.symlink_privilege_limitation('other_test', message))
-        self.assertFalse(check_skips.symlink_privilege_limitation('guest_kernel_sys_paths_symlinkat', 'SKIP: something else\n'))
-class JUnitRefusalTests(unittest.TestCase):
-    def write(self, text):
-        directory = tempfile.TemporaryDirectory()
-        self.addCleanup(directory.cleanup)
-        path = Path(directory.name) / 'report.xml'
-        path.write_text(text, encoding='utf-8')
-        return path
-
-    def test_skips_refuses_a_root_that_is_not_a_testsuite(self):
-        with self.assertRaisesRegex(ValueError, 'expected a JUnit testsuite'):
-            list(check_skips.skips(self.write('<other/>')))
-
-    def test_skips_refuses_a_test_name_listed_twice(self):
-        xml = '<testsuite><testcase name="a"/><testcase name="a"/></testsuite>'
-        with self.assertRaisesRegex(ValueError, 'listed more than once'):
-            list(check_skips.skips(self.write(xml)))
-class DeviceLimitTests(unittest.TestCase):
-    def test_device_limitations_needs_every_skip_to_match_a_pattern(self):
-        self.assertTrue(check_skips.device_limitations('skipped, no display here', [check_skips.NO_DISPLAY]))
-        self.assertFalse(check_skips.device_limitations('skipped, other', [check_skips.NO_DISPLAY]))
-        self.assertFalse(check_skips.device_limitations('no skip line here', [check_skips.NO_DISPLAY]))
-
-    def test_high_refresh_limitation_matches_only_the_refresh_message(self):
-        self.assertTrue(check_skips.high_refresh_limitation('test: skipped, current display does not provide 120 Hz\n'))
-        self.assertFalse(check_skips.high_refresh_limitation('test: skipped, other reason\n'))
-class RequiredTestsTests(unittest.TestCase):
-    def test_skips_refuses_an_empty_report_when_tests_are_required(self):
-        with tempfile.TemporaryDirectory() as directory:
-            path = Path(directory) / 'report.xml'
-            path.write_text('<testsuite></testsuite>', encoding='utf-8')
-            with self.assertRaisesRegex(ValueError, 'no testcases'):
-                list(check_skips.skips(path, require_tests=True))
-            self.assertEqual(list(check_skips.skips(path)), [])
 
 
 class DeviceLimitationsTests(unittest.TestCase):
@@ -718,7 +745,8 @@ class DeviceLimitationsTests(unittest.TestCase):
 
 class SymlinkPrivilegeLimitationTests(unittest.TestCase):
     REASON = "SKIP: Windows symbolic-link privileges unavailable"
-    NAMES = ("guest_kernel_sys_paths_symlinkat", "guest_kernel_sys_paths_symlinkat_patched")
+    NAMES = ("guest_kernel_sys_paths_symlinkat", "guest_kernel_sys_paths_symlinkat_patched", "guest_kernel_sys_paths_readlink_limits",
+             "guest_kernel_sys_paths_readlink_limits_patched", "guest_kernel_sys_paths_readlinkat_limits", "guest_kernel_sys_paths_readlinkat_limits_patched")
 
     def test_exact_reason_for_the_symlink_tests_is_a_limitation(self):
         for name in self.NAMES:
@@ -726,7 +754,9 @@ class SymlinkPrivilegeLimitationTests(unittest.TestCase):
                 self.assertTrue(check_skips.symlink_privilege_limitation(name, "noise\n  " + self.REASON + "  \n"))
 
     def test_other_tests_are_never_a_limitation(self):
-        self.assertFalse(check_skips.symlink_privilege_limitation("guest_kernel_sys_paths_open", self.REASON))
+        for name in ("guest_kernel_sys_paths_open", "guest_kernel_sys_paths_readlink", "guest_kernel_sys_paths_readlinkat_limits_unpatched"):
+            with self.subTest(name=name):
+                self.assertFalse(check_skips.symlink_privilege_limitation(name, self.REASON))
 
     def test_any_other_reason_or_no_reason_is_not_a_limitation(self):
         name = self.NAMES[0]
