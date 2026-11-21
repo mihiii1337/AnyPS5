@@ -878,6 +878,14 @@ class TraceDigestTests(unittest.TestCase):
         self.assertEqual(largest[0]["name"], "Driver.Packet")
         self.assertAlmostEqual(largest[0]["ms"], 21.0 / 3)
 
+    def test_all_slices_keeps_other_rankings_limited(self):
+        trace = trace_digest.Trace(EVENTS)
+        limited = trace_digest.digest(trace, top=1)
+        expanded = trace_digest.digest(trace, top=1, all_slices=True)
+        self.assertEqual(len(limited.pop("top_slices_ms_per_frame")), 1)
+        self.assertGreater(len(expanded.pop("top_slices_ms_per_frame")), 1)
+        self.assertEqual(expanded, limited)
+
     def test_longest_waits(self):
         waits = self.result()["longest_waits"]
         self.assertEqual((waits[0]["name"], waits[0]["thread"], waits[0]["present"]), ("Driver.Present.inflight_wait", "presenter", 601))

@@ -7,7 +7,7 @@ from pathlib import Path
 import trace_digest
 
 DESCRIPTION = """Compares two APS5_TRACE_FRAMES / APS5_TRACE_SECONDS captures (aps5-trace-*.json.gz) per frame: the busy
-and wait time of each thread, and the largest slices of either capture. A thread or slice present in one capture
+and wait time of each thread, and the slices with the largest absolute change in time per frame. A thread or slice present in one capture
 counts as zero in the other. Times are per frame, so captures with different frame counts compare directly.
 
 The deltas are B minus A. A capture's digest is built by trace_digest.py, so the same caveats apply: buffer-full
@@ -15,8 +15,8 @@ losses make the slice timings describe retained events only."""
 
 
 def compare(a_path, b_path, top=10):
-    a = trace_digest.digest(trace_digest.load_trace(a_path), None, None, 0, top)
-    b = trace_digest.digest(trace_digest.load_trace(b_path), None, None, 0, top)
+    a = trace_digest.digest(trace_digest.load_trace(a_path), worst=0, top=0, all_slices=True)
+    b = trace_digest.digest(trace_digest.load_trace(b_path), worst=0, top=0, all_slices=True)
 
     a_threads = {row["thread"]: row for row in a["threads"]}
     b_threads = {row["thread"]: row for row in b["threads"]}

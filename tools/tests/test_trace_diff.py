@@ -60,6 +60,21 @@ class DiffTests(unittest.TestCase):
         self.assertGreater(packet["delta_ms_per_frame"], 0.0)
         self.assertAlmostEqual(packet["b_ms_per_frame"] - packet["a_ms_per_frame"], packet["delta_ms_per_frame"])
 
+    def test_slice_deltas_use_both_timings_before_the_top_cutoff(self):
+        frame = [item for item in events(0) if item["ph"] != "X"]
+        frame[-1]["ts"] = 120000
+        durations = [10000 - 500 * index for index in range(11)]
+
+        def capture(values):
+            return frame + [complete(1, f"S{index:02d}", index * 10000, duration) for index, duration in enumerate(values)]
+
+        rows = self.diff(capture(durations), capture(durations[:9] + [4000, 9800]))["slices"]
+        self.assertEqual(len(rows), 10)
+        self.assertEqual([row["name"] for row in rows[:2]], ["S10", "S09"])
+        for row, (before, after, delta) in zip(rows, [(5.0, 9.8, 4.8), (5.5, 4.0, -1.5)]):
+            self.assertEqual((row["a_ms_per_frame"], row["b_ms_per_frame"]), (before, after))
+            self.assertAlmostEqual(row["delta_ms_per_frame"], delta)
+
     def test_a_thread_present_on_one_side_counts_as_zero_on_the_other(self):
         result = self.diff(events(10000), events(10000, extra_thread=True))
         gpu = next(row for row in result["threads"] if row["thread"] == "gpu")

@@ -263,7 +263,7 @@ def persistent_peaks(values):
     return sorted((entry for entry in peaks if entry[1] > 0), key=lambda entry: (-entry[1], entry[0]))
 
 
-def digest(trace, summary=None, stacks=None, worst=5, top=10):
+def digest(trace, summary=None, stacks=None, worst=5, top=10, *, all_slices=False):
     window_ms = summary["window"]["ms"] if summary else None
     frames = trace.frames(window_ms * 1000.0 if window_ms is not None else None)
     span_us = frames[-1][2] - frames[0][1] if frames else 0.0
@@ -326,7 +326,7 @@ def digest(trace, summary=None, stacks=None, worst=5, top=10):
                         "wait_pct": 100.0 * waited / span_us if span_us else 0.0,
                         "top": [{"name": name, "ms_per_frame": us / 1000.0 / count} for name, us in leaders.most_common(2)]})
     result["threads"] = threads
-    result["top_slices_ms_per_frame"] = [{"name": name, "ms": us / 1000.0 / count} for name, us in totals.most_common(top)]
+    result["top_slices_ms_per_frame"] = [{"name": name, "ms": us / 1000.0 / count} for name, us in totals.most_common(None if all_slices else top)]
     starts = [ts for ts, _ in trace.presents]
     result["longest_waits"] = [{"name": name, "thread": thread, "ms": dur / 1000.0, "at_ms": ts / 1000.0,
                                 "present": trace.presents[bisect.bisect_right(starts, ts) - 1][1] if starts and ts >= starts[0] else None}
