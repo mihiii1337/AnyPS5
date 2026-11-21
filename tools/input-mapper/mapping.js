@@ -4,7 +4,7 @@ export const groups = [
     {name: 'Directional controls', actions: ['Up', 'Right', 'Down', 'Left']},
     {name: 'Left analog stick', actions: ['LeftStickLeft', 'LeftStickRight', 'LeftStickUp', 'LeftStickDown']},
     {name: 'Right analog stick', actions: ['RightStickLeft', 'RightStickRight', 'RightStickUp', 'RightStickDown']},
-    {name: 'Touch and utility', actions: ['Options', 'TouchLeft', 'TouchRight', 'StickModifier', 'Shake', 'ToggleMouse', 'ToggleFullscreen', 'TogglePerformanceOverlay', 'Screenshot', 'ShowPadStatus', 'VolumeUp', 'VolumeDown', 'ToggleMute', 'ReloadInputMapping']}
+    {name: 'Touch and utility', actions: ['Options', 'TouchLeft', 'TouchRight', 'StickModifier', 'Shake', 'ToggleMouse', 'ToggleFullscreen', 'ToggleBorderless', 'TogglePerformanceOverlay', 'Screenshot', 'ShowPadStatus', 'VolumeUp', 'VolumeDown', 'ToggleMute', 'ReloadInputMapping']}
 ];
 
 export const actions = groups.flatMap(group => group.actions);
@@ -22,7 +22,7 @@ export const defaults = {
     LeftStickLeft: ['KEY:A'], LeftStickRight: ['KEY:D'], LeftStickUp: ['KEY:W'], LeftStickDown: ['KEY:S'],
     RightStickLeft: ['KEY:F'], RightStickRight: ['KEY:H'], RightStickUp: ['KEY:T'], RightStickDown: ['KEY:G'],
     TouchLeft: ['KEY:Backspace'], TouchRight: ['KEY:Tab'], StickModifier: [], Shake: ['KEY:X'],
-    ToggleMouse: ['KEY:F7', 'MOUSE:Middle'], ToggleFullscreen: ['KEY:F11'], TogglePerformanceOverlay: ['KEY:F10'], Screenshot: ['KEY:F12'], ShowPadStatus: ['KEY:F9'], VolumeUp: ['KEY:F6'], VolumeDown: ['KEY:F5'], ToggleMute: ['KEY:F8'], ReloadInputMapping: ['KEY:F1']
+    ToggleMouse: ['KEY:F7', 'MOUSE:Middle'], ToggleFullscreen: ['KEY:F11'], ToggleBorderless: ['KEY:F2'], TogglePerformanceOverlay: ['KEY:F10'], Screenshot: ['KEY:F12'], ShowPadStatus: ['KEY:F9'], VolumeUp: ['KEY:F6'], VolumeDown: ['KEY:F5'], ToggleMute: ['KEY:F8'], ReloadInputMapping: ['KEY:F1']
 };
 
 export function actionsForInput(search, bindings) {
@@ -49,6 +49,7 @@ export function inputFilename(titleId) {
 
 export function typesForAction(action) {
     if (!actions.includes(action)) return [];
+    if (action === 'ToggleBorderless') return ['KEY'];
     if (emulatorActions.includes(action)) return ['KEY', 'PAD'];
     return padButtons.has(action) ? ['KEY', 'MOUSE', 'WHEEL'] : ['KEY', 'MOUSE'];
 }

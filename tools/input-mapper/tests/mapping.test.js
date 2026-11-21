@@ -251,7 +251,7 @@ test('all exportable SDL names validate and unsafe comment names are rejected', 
 test('mouse values and action restrictions match the current INI format', () => {
     for (const action of actions) {
         for (const value of mouseValues) {
-            assert.equal(validate([binding(action, 'MOUSE', value)]).errors.length === 0, !['ToggleFullscreen', 'TogglePerformanceOverlay', 'Screenshot', 'ShowPadStatus', 'VolumeUp', 'VolumeDown', 'ToggleMute', 'ReloadInputMapping'].includes(action));
+            assert.equal(validate([binding(action, 'MOUSE', value)]).errors.length === 0, !['ToggleFullscreen', 'ToggleBorderless', 'TogglePerformanceOverlay', 'Screenshot', 'ShowPadStatus', 'VolumeUp', 'VolumeDown', 'ToggleMute', 'ReloadInputMapping'].includes(action));
         }
     }
     assert.ok(validate([binding('Cross', 'MOUSE', 'Button1')]).errors.length);
@@ -268,7 +268,7 @@ test('wheel directions only map to pad buttons', () => {
 });
 
 test('new utility actions import and round trip without accepting unsupported sources', () => {
-    const source = 'StickModifier = MOUSE:X2\nShake = MOUSE:Left\nTogglePerformanceOverlay = KEY:F9\nScreenshot = KEY:F8\nShowPadStatus = KEY:F4\n';
+    const source = 'StickModifier = MOUSE:X2\nShake = MOUSE:Left\nToggleBorderless = KEY:F3\nTogglePerformanceOverlay = KEY:F9\nScreenshot = KEY:F8\nShowPadStatus = KEY:F4\n';
     const imported = parseIni(source);
     assert.deepEqual(imported.errors, []);
     assert.equal(serialize(imported.entries), source);
@@ -296,7 +296,7 @@ test('ShowPadStatus is an emulator action with an F9 default that conflicts like
 });
 
 test('updated built-in inputs warn until their owning action is overridden', () => {
-    for (const [action, type, value] of [['L2', 'KEY', 'R'], ['L2', 'MOUSE', 'X1'], ['ToggleMouse', 'KEY', 'F7'], ['Shake', 'KEY', 'X'], ['Screenshot', 'KEY', 'F12'], ['TogglePerformanceOverlay', 'KEY', 'F10'], ['ShowPadStatus', 'KEY', 'F9']]) {
+    for (const [action, type, value] of [['L2', 'KEY', 'R'], ['L2', 'MOUSE', 'X1'], ['ToggleMouse', 'KEY', 'F7'], ['Shake', 'KEY', 'X'], ['Screenshot', 'KEY', 'F12'], ['ToggleBorderless', 'KEY', 'F2'], ['TogglePerformanceOverlay', 'KEY', 'F10'], ['ShowPadStatus', 'KEY', 'F9']]) {
         const input = binding('Cross', type, value);
         assert.ok(validate([input]).warnings.some(warning => warning.message.includes(`${action} (built-in)`)));
         assert.equal(validate([input, binding(action, 'KEY', 'J')]).warnings.length, 0);
@@ -431,7 +431,7 @@ test('PAD chords for emulator actions import, normalize and export like the nati
         binding('VolumeUp', 'PAD', 'TouchPad')]);
     assert.equal(serialize(result.entries), 'ToggleFullscreen = PAD:R1+Options\nScreenshot = PAD:L1+R1\nVolumeUp = PAD:TouchPad\n');
     for (const action of emulatorActions) assert.deepEqual(validate([binding(action, 'PAD', 'Options+Cross')]).errors, []);
-    for (const source of ['Cross = PAD:L1', 'RightStickUp = PAD:L1', 'ToggleMouse = PAD:L1', 'Screenshot = PAD:', 'Screenshot = PAD:L1+',
+    for (const source of ['Cross = PAD:L1', 'RightStickUp = PAD:L1', 'ToggleMouse = PAD:L1', 'ToggleBorderless = PAD:L1', 'Screenshot = PAD:', 'Screenshot = PAD:L1+',
         'Screenshot = PAD:L1++R1', 'Screenshot = PAD:L4', 'Screenshot = PAD:Share']) {
         assert.deepEqual(parseIni(source).errors.map(error => error.line), [1], source);
     }
