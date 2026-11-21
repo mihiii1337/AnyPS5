@@ -211,6 +211,10 @@ void conversionTest(const Context& context, std::uint64_t pixelFormat, VkFormat 
 void RunResidentPresentTests(const Context& context) {
     decisionTests();
     sliceTests();
+    for (const auto display : {Bgra8 | TenBit, Rgba8 | TenBit}) {
+        conversionTest(context, display, VK_FORMAT_R8G8B8A8_UNORM);
+        conversionTest(context, display, VK_FORMAT_B8G8R8A8_UNORM);
+    }
     conversionTest(context, Bgra8 | TenBit, VK_FORMAT_A2B10G10R10_UNORM_PACK32);
     conversionTest(context, Rgba8 | TenBit, VK_FORMAT_A2B10G10R10_UNORM_PACK32);
     conversionTest(context, Bgra8 | TenBit, VK_FORMAT_A2R10G10B10_UNORM_PACK32);

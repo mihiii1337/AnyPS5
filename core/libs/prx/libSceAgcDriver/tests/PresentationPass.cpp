@@ -533,14 +533,19 @@ void passConvertsPq(const Context& context, PresentationPass& pass, const Source
 
 void residentPresentTests(const Context& context) {
     PresentationPass pass(context, 2);
-    const std::array<std::pair<std::uint64_t, VkFormat>, 5> cases{{
+    const std::array<std::pair<std::uint64_t, VkFormat>, 9> cases{{
         {Bgra8 | TenBit, VK_FORMAT_A2B10G10R10_UNORM_PACK32},
         {Rgba8 | TenBit, VK_FORMAT_A2B10G10R10_UNORM_PACK32},
         {Bgra8 | TenBit, VK_FORMAT_A2R10G10B10_UNORM_PACK32},
+        {Bgra8 | TenBit, VK_FORMAT_R8G8B8A8_UNORM},
+        {Bgra8 | TenBit, VK_FORMAT_B8G8R8A8_UNORM},
+        {Rgba8 | TenBit, VK_FORMAT_R8G8B8A8_UNORM},
+        {Rgba8 | TenBit, VK_FORMAT_B8G8R8A8_UNORM},
         {Bgra8, VK_FORMAT_R8G8B8A8_UNORM},
         {Rgba8, VK_FORMAT_B8G8R8A8_UNORM},
     }};
     for (const auto& [pixelFormat, storage] : cases) {
+        Require(AgcDriver::ResidentPresentPath(storage, pixelFormat, true) == AgcDriver::ResidentPresent::Convert, "the presentation test image did not select resident conversion");
         const auto source = makeSource(pixelFormat, storage, 200, 130);
         const auto resident = residentImage(context, source);
         passMatchesConvertPath(context, pass, source, *resident);
